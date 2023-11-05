@@ -59,34 +59,27 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
 
     // Create the stacked bars
     svg.append("g")
-        .selectAll("g")
-        .data(stackedData)
-        .enter().append("g")
-            .attr("fill", d => colors(d.key))
-            .selectAll("rect")
-            .data(d => d)
-            .enter().append("rect")
-                .attr("x", d => x(d.data.title))
-                .attr("y", d => y(d[1]))
-                .attr("height", d => y(d[0]) - y(d[1]))
-                .attr("width", x.bandwidth())
-                .on("mouseover", function(event, d) {
-                    tooltip.transition()
-                        .duration(200)
-                        .style("opacity", .9);
-                    tooltip.html(`Title: ${d.data.title}<br/>Budget: $${d.data.budget.toLocaleString()}<br/>Worldwide Gross: $${d.data.worlwide_gross_income.toLocaleString()}`)
-                        .style("left", (event.pageX + 30) + "px")
-                        .style("top", (event.pageY - 30) + "px");
-                })
-                .on("mouseout", function(d) {
-                    tooltip.transition()
-                        .duration(500)
-                        .style("opacity", 0);
-                })
-                .on("click", function(event, d) {
-                    // When a bar is clicked, call the updateActorsGraph function with the movie's data
-                    updateActorsGraph(d.data);
-                });
+    .selectAll("g")
+    .data(stackedData)
+    .enter().append("g")
+        .attr("fill", d => colors(d.key))
+        .selectAll("rect")
+        .data(d => d)
+        .enter().append("rect")
+            .attr("x", d => x(d.data.title))
+            .attr("y", d => y(d[1]))
+            .attr("height", d => y(d[0]) - y(d[1]))
+            .attr("width", x.bandwidth())
+            .on("mouseover", function(event, d) {
+                // ... (your existing tooltip code)
+            })
+            .on("mouseout", function(d) {
+                // ... (your existing tooltip code)
+            })
+            .on("click", function(event, d) {
+                // When a bar is clicked, call the onMovieClick function with the movie's title
+                onMovieClick(d.data.title);
+            });
 
     // Additional code for filtering or other features can go here...
 });

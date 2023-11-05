@@ -1,4 +1,19 @@
-// Function to update the actors network graph
+let moviesToActors; // Placeholder, should be loaded with the actual data
+
+// Load the JSON data for moviesToActors
+fetch('movies_to_actors.json')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        moviesToActors = data;
+    })
+    .catch(error => console.error('Error loading the JSON data:', error));
+
+    
 function updateActorsGraph(movieData) {
     // Extract the actors list from the movie data
     let actorsList = movieData.actors.split(", ");
@@ -6,7 +21,7 @@ function updateActorsGraph(movieData) {
     // Prepare nodes data
     let nodes = actorsList.map(actor => ({ id: actor, name: actor }));
 
-    // Prepare links data (this example assumes a function that finds shared movies)
+    // Prepare links data
     let links = findSharedMoviesBetweenActors(nodes);
 
     // Set dimensions for the graph
@@ -15,48 +30,57 @@ function updateActorsGraph(movieData) {
 
     // Create SVG container for the graph
     const svg = d3.select("#actorsGraph")
-        .html("") // Clear any existing content
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+    .html("") // Clear any existing content
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
 
-    // Create simulation for nodes
+                
+    // Calculate normalization factors based on graph size and complexity
+    const chargeNormalization = Math.cbrt(nodes.length) * 10; // Cube root used as a scaling function
+    const linkDistanceNormalization = 350 / Math.sqrt(nodes.length); // Square root to scale down distance as nodes increase
+
+    // Create simulation
     const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id))
-        .force("charge", d3.forceManyBody())
+        .force("link", d3.forceLink(links)
+            .id(d => d.id)
+            .distance(d => linkDistanceNormalization * d.movies.length)) // Normalize link distance based on shared movies count
+        .force("charge", d3.forceManyBody()
+            .strength(-400 / chargeNormalization)) // Normalize charge strength based on number of nodes
         .force("center", d3.forceCenter(width / 2, height / 2));
 
     // Draw lines for the links
     const link = svg.append("g")
-        .attr("class", "links")
-        .selectAll("line")
-        .data(links)
-        .enter().append("line")
-        .attr("stroke-width", 2)
-        .attr("stroke", "#999");
+    .attr("class", "links")
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+    .attr("stroke-width", 1) // Reduced stroke-width for less prominent links
+    .attr("stroke", "#bbb"); // Lighter color for the links
 
     // Draw circles for the nodes
     const node = svg.append("g")
-        .attr("class", "nodes")
-        .selectAll("circle")
-        .data(nodes)
-        .enter().append("circle")
-        .attr("r", 5)
-        .attr("fill", "#69b3a2")
-        .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+    .attr("class", "nodes")
+    .selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("r", 5)
+    .attr("fill", "#69b3a2")
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
 
     // Add labels to each node
     const labels = svg.append("g")
-        .attr("class", "labels")
-        .selectAll("text")
-        .data(nodes)
-        .enter().append("text")
-        .attr("dx", 15)
-        .attr("dy", ".35em")
-        .text(d => d.name);
+    .attr("class", "labels")
+    .selectAll("text")
+    .data(nodes)
+    .enter().append("text")
+    .attr("dx", 15)
+    .attr("dy", ".35em")
+    .text(d => d.name)
+    .style("font-weight", "bold"); // Bold font for the names
 
     // Define drag behavior
     function dragstarted(event, d) {
@@ -94,34 +118,38 @@ function updateActorsGraph(movieData) {
     });
 }
 
-// Example usage with a dummy movie data
-// This would be called when a movie is clicked in visualization 1
-updateActorsGraph({
-    // Placeholder movie data
-    actors: "Meg Ryan, Hugh Jackman, Liev Schreiber"
-});
-
-// This is a placeholder function and needs to be implemented 
-function findSharedMoviesBetweenActors(nodes) {
-    // Implement logic to find shared movies between actors
-    // For each pair of actors, check if there is a movie they both played in
-    // Return an array of links with source and target for each pair that has a shared movie
+function findSharedMoviesBetweenActors(nodes, minShared = 2) {
     let links = [];
-    // Example of what the data might look like
-    nodes.forEach((source, i) => {
-        nodes.slice(i + 1).forEach(target => {
-            // Check if actors have a shared movie
-            if (actorsHaveSharedMovie(source.id, target.id)) {
-                links.push({ source: source.id, target: target.id });
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            let sharedMovies = actorsHaveSharedMovie(nodes[i].id, nodes[j].id, minShared);
+            if (sharedMovies.length > 0) {
+                links.push({ source: nodes[i].id, target: nodes[j].id, movies: sharedMovies });
             }
-        });
-    });
+        }
+    }
     return links;
 }
 
-// Placeholder function to check if two actors have shared a movie
-function actorsHaveSharedMovie(actor1, actor2) {
-    // Implement your logic to check for a shared movie
-    // For this example, it just returns false to avoid errors
-    return false;
+function actorsHaveSharedMovie(actor1, actor2, minShared = 2) {
+    let sharedMovies = [];
+    for (let movie in moviesToActors) {
+        if (moviesToActors[movie].includes(actor1) && moviesToActors[movie].includes(actor2)) {
+            sharedMovies.push(movie);
+        }
+    }
+    // Only consider actors that have shared at least 'minShared' movies as connected
+    return sharedMovies.length >= minShared ? sharedMovies : [];
 }
+
+// To be called when a movie is clicked in visualization 1
+function onMovieClick(movieTitle) {
+    // Update the movie title display
+    document.getElementById('movieTitle').textContent = `Actors network for "${movieTitle}"`;
+
+    // Find the movie data from the JSON object
+    let movieData = { actors: moviesToActors[movieTitle].join(", ") };
+    updateActorsGraph(movieData);
+}
+
+
