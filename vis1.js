@@ -1,102 +1,189 @@
+// Load the CSV file
 d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
+    // Prepare and sort the data
     data.forEach(d => {
-        d.worlwide_gross_income = +d.worlwide_gross_income; // Convert string to number
+        d.worlwide_gross_income = +d.worlwide_gross_income;
+        d.budget = +d.budget;
     });
-
-    // Sort data by worldwide gross income and get top 10
     let topMovies = data.sort((a, b) => b.worlwide_gross_income - a.worlwide_gross_income).slice(0, 10);
 
-    // Set up SVG canvas dimensions
-    const width = 500;
-    const height = 250;
-    const margin = { top: 50, right: 20, bottom: 150, left: 250 }; // Adjusted top margin for chart title
+    // Set up SVG canvas dimensions for the bar chart
+    const width = 960;
+    const height = 400;
+    const margin = { top: 20, right: 30, bottom: 100, left: 90 };
 
-    const svg = d3.select("#barChart").append("svg")
+    // Append the svg object to the barChart div
+    const svg = d3.select("#barChart")
+        .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
-        .style("display", "block")
-        .style("margin", "auto")
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Add chart title
-    svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", -margin.top / 2)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .text("Top 10 Movies by Worldwide Gross Income");
+    // Create the stacks
+    const stack = d3.stack()
+        .keys(["budget", "worlwide_gross_income"])
+        .order(d3.stackOrderNone)
+        .offset(d3.stackOffsetNone);
 
-    // Set up scales
+    const stackedData = stack(topMovies);
+
+    // X axis
     const x = d3.scaleBand()
-        .domain(topMovies.map(d => d.title))
         .range([0, width])
-        .padding(0.1);
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(topMovies, d => d.worlwide_gross_income)])
-        .range([height, 0]);
-
-        // Add bars
-    svg.selectAll(".bar")
-        .data(topMovies)
-        .enter().append("rect")
-        .attr("class", "bar")
-        .attr("x", d => x(d.title))
-        .attr("y", d => y(d.worlwide_gross_income))
-        .attr("width", x.bandwidth())
-        .attr("height", d => height - y(d.worlwide_gross_income))
-        .on("click", function(d) {
-            const currentBar = d3.select(this);
-            
-            // If the bar is already active, reset it
-            if (currentBar.classed("active")) {
-                currentBar.style("fill", "steelblue").classed("active", false);
-                svg.select(".tooltip").remove();
-            } else {
-                // Reset all bars
-                d3.selectAll(".bar").style("fill", "steelblue").classed("active", false);
-                svg.select(".tooltip").remove();
-
-                // Activate the clicked bar
-                currentBar.style("fill", "orange").classed("active", true);
-                
-                if (d.title && d.worlwide_gross_income) {
-                    // Show movie details on click
-                    svg.append("text")
-                        .attr("class", "tooltip")
-                        .attr("x", x(d.title) + x.bandwidth() / 2)
-                        .attr("y", Math.max(y(d.worlwide_gross_income) - 10, 15))
-                        .attr("text-anchor", "middle")
-                        .style("fill", "black")
-                        .text(`${d.title}: $${d.worlwide_gross_income.toLocaleString()}`);
-                }
-            }
-        });
-
-    // Add x-axis and its title
+        .domain(topMovies.map(d => d.title))
+        .padding(0.2);
     svg.append("g")
         .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(x))
         .selectAll("text")
-        .attr("transform", "rotate(-60)")
-        .attr("dx", "-.8em")
-        .attr("dy", ".25em")
+        .attr("transform", "translate(-10,0)rotate(-45)")
         .style("text-anchor", "end");
 
-    svg.append("text")
-        .attr("transform", `translate(${width / 2},${height + margin.bottom - 50})`)
-        .style("text-anchor", "middle")
-        .text("Movie Title");
+    // Y axis
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(topMovies, d => d.budget + d.worlwide_gross_income)])
+        .range([height, 0]);
+    svg.append("g")
+        .call(d3.axisLeft(y));
 
-    // Add y-axis and its title
-    svg.append("g").call(d3.axisLeft(y));
+    // Colors
+    const colors = d3.scaleOrdinal()
+        .domain(["budget", "worlwide_gross_income"])
+        .range(["#6f6f6f", "#69b3a2"]);
 
-    svg.append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left + 125)
-        .attr("x", -height / 2)
-        .attr("dy", "1em")
-        .style("text-anchor", "middle")
-        .text("Worldwide Gross Income ($)");
+    // Tooltip for the bar chart
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+    // Create the stacked bars
+    svg.append("g")
+        .selectAll("g")
+        .data(stackedData)
+        .enter().append("g")
+            .attr("fill", d => colors(d.key))
+            .selectAll("rect")
+            .data(d => d)
+            .enter().append("rect")
+                .attr("x", d => x(d.data.title))
+                .attr("y", d => y(d[1]))
+                .attr("height", d => y(d[0]) - y(d[1]))
+                .attr("width", x.bandwidth())
+                .on("mouseover", function(event, d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`Title: ${d.data.title}<br/>Budget: $${d.data.budget.toLocaleString()}<br/>Worldwide Gross: $${d.data.worlwide_gross_income.toLocaleString()}`)
+                        .style("left", (event.pageX + 30) + "px")
+                        .style("top", (event.pageY - 30) + "px");
+                })
+                .on("mouseout", function(d) {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                })
+                .on("click", function(event, d) {
+                    // When a bar is clicked, call the updateActorsGraph function with the movie's data
+                    updateActorsGraph(d.data);
+                });
+
+    // Additional code for filtering or other features can go here...
 });
+
+// Function to create a network graph based on the movie's actors
+function updateActorsGraph(movieData) {
+    // Extract actors and prepare the nodes for the graph
+    let actors = movieData.actors.split(", ");
+    let nodes = actors.map(actor => ({ id: actor, group: 1 }));
+    let links = [];
+
+    // Create links between actors (this is a simplified example)
+    for (let i = 0; i < actors.length - 1; i++) {
+        links.push({
+            source: actors[i],
+            target: actors[i + 1],
+            value: 1
+        });
+    }
+
+    // Set up the svg width and height for the network graph
+    const graphWidth = 960;
+    const graphHeight = 600;
+
+    // Clear any previous graph
+    const graphSvg = d3.select("#actorsGraph").html("").append("svg")
+        .attr("width", graphWidth)
+        .attr("height", graphHeight);
+
+    // Set up the simulation and add forces
+    const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(graphWidth / 2, graphHeight / 2));
+
+    // Draw lines for the links
+    const link = graphSvg.append("g")
+        .attr("class", "links")
+        .selectAll("line")
+        .data(links)
+        .enter().append("line")
+        .attr("stroke-width", d => Math.sqrt(d.value));
+
+    // Draw circles for the nodes
+    const node = graphSvg.append("g")
+        .attr("class", "nodes")
+        .selectAll("circle")
+        .data(nodes)
+        .enter().append("circle")
+        .attr("r", 5)
+        .attr("fill", "#69b3a2");
+
+    // Drag functions for the nodes
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+    node.call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+    // Tick function for the simulation
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+    });
+
+    // Zoom capabilities for the SVG
+    const zoom_handler = d3.zoom()
+        .on("zoom", (event) => {
+            graphSvg.attr("transform", event.transform);
+        });
+
+    zoom_handler(graphSvg);
+
+    // Add tooltips to the nodes
+    node.append("title")
+        .text(d => d.id);
+}
