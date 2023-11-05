@@ -70,18 +70,34 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
             .attr("y", d => y(d[1]))
             .attr("height", d => y(d[0]) - y(d[1]))
             .attr("width", x.bandwidth())
-            .on("mouseover", function(event, d) {
-                // ... (your existing tooltip code)
-            })
-            .on("mouseout", function(d) {
-                // ... (your existing tooltip code)
-            })
             .on("click", function(event, d) {
                 // When a bar is clicked, call the onMovieClick function with the movie's title
                 onMovieClick(d.data.title);
             });
+            
 
-    // Additional code for filtering or other features can go here...
+        // Create a legend
+        const legend = svg.append("g")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .attr("text-anchor", "end")
+        .selectAll("g")
+        .data(["Budget", "Worldwide Gross Income"])
+        .enter().append("g")
+        .attr("transform", (d, i) => `translate(0,${i * 20})`);
+
+        legend.append("rect")
+        .attr("x", width - 19)
+        .attr("width", 19)
+        .attr("height", 19)
+        .attr("fill", d => colors(d === "Budget" ? "budget" : "worlwide_gross_income"));
+
+        legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9.5)
+        .attr("dy", "0.32em")
+        .text(d => d);
+
 });
 
 // Function to create a network graph based on the movie's actors
