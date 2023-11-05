@@ -10,7 +10,7 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
     // Set up SVG canvas dimensions for the bar chart
     const width = 960;
     const height = 400;
-    const margin = { top: 20, right: 30, bottom: 100, left: 90 };
+    const margin = { top: 20, right: 30, bottom: 120, left: 90 };
 
     // Append the svg object to the barChart div
     const svg = d3.select("#barChart")
