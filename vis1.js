@@ -1,11 +1,22 @@
+// Global variable to store all movies data
+let allMoviesData;
+
 // Load the CSV file
 d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
-    // Prepare and sort the data
+    allMoviesData = data; // Store the data in the global variable
     data.forEach(d => {
         d.worlwide_gross_income = +d.worlwide_gross_income;
         d.budget = +d.budget;
     });
+    updateBarChart(data); // Initial chart with all data
+});
+
+function updateBarChart(data) {
+    // Prepare and sort the data for the top 10 movies
     let topMovies = data.sort((a, b) => b.worlwide_gross_income - a.worlwide_gross_income).slice(0, 10);
+
+    // Clear the previous chart
+    d3.select("#barChart").html("");
 
     // Set up SVG canvas dimensions for the bar chart
     const width = 960;
@@ -52,32 +63,25 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         .domain(["budget", "worlwide_gross_income"])
         .range(["#6f6f6f", "#69b3a2"]);
 
-    // Tooltip for the bar chart
-    const tooltip = d3.select("body").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0);
-
     // Create the stacked bars
     svg.append("g")
-    .selectAll("g")
-    .data(stackedData)
-    .enter().append("g")
-        .attr("fill", d => colors(d.key))
-        .selectAll("rect")
-        .data(d => d)
-        .enter().append("rect")
-            .attr("x", d => x(d.data.title))
-            .attr("y", d => y(d[1]))
-            .attr("height", d => y(d[0]) - y(d[1]))
-            .attr("width", x.bandwidth())
-            .on("click", function(event, d) {
-                // When a bar is clicked, call the onMovieClick function with the movie's title
-                onMovieClick(d.data.title);
-            });
-            
+        .selectAll("g")
+        .data(stackedData)
+        .enter().append("g")
+            .attr("fill", d => colors(d.key))
+            .selectAll("rect")
+            .data(d => d)
+            .enter().append("rect")
+                .attr("x", d => x(d.data.title))
+                .attr("y", d => y(d[1]))
+                .attr("height", d => y(d[0]) - y(d[1]))
+                .attr("width", x.bandwidth())
+                .on("click", function(event, d) {
+                    onMovieClick(d.data.title); // Function to be called when a bar is clicked
+                });
 
-        // Create a legend
-        const legend = svg.append("g")
+    // Create a legend
+    const legend = svg.append("g")
         .attr("font-family", "sans-serif")
         .attr("font-size", 10)
         .attr("text-anchor", "end")
@@ -86,19 +90,25 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         .enter().append("g")
         .attr("transform", (d, i) => `translate(0,${i * 20})`);
 
-        legend.append("rect")
+    legend.append("rect")
         .attr("x", width - 19)
         .attr("width", 19)
         .attr("height", 19)
         .attr("fill", d => colors(d === "Budget" ? "budget" : "worlwide_gross_income"));
 
-        legend.append("text")
+    legend.append("text")
         .attr("x", width - 24)
         .attr("y", 9.5)
         .attr("dy", "0.32em")
         .text(d => d);
+}
 
-});
+// Function to filter and update the chart based on genre
+function filterMoviesByGenre(genre) {
+    let filteredMovies = allMoviesData.filter(movie => movie.genre.includes(genre));
+    updateBarChart(filteredMovies);
+}
+
 
 // Function to create a network graph based on the movie's actors
 function updateActorsGraph(movieData) {

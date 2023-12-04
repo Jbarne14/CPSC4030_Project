@@ -1,52 +1,87 @@
-// Set up the SVG canvas
-const margin = { top: 20, right: 20, bottom: 70, left: 70 };
-const width = 600 - margin.left - margin.right;
-const height = 400 - margin.top - margin.bottom;
+// Vis3.js - Genre Distribution Pie Chart with Labels
 
-const svg = d3.select('body')
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${margin.left}, ${margin.top})`);
-
-// Load the data from the CSV file
-d3.csv('IMDB Movies 2000-2020.csv', (error, data) => {
-    if (error) throw error;
-
-    // Convert the budget and worldwide_gross_income strings to numbers
+// Load the necessary data
+d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
+    let genreCounts = {};
     data.forEach(d => {
-        d.budget = +d.budget;
-        d.worldwide_gross_income = +d.worldwide_gross_income;
+        let genres = d.genre.split(", ");
+        genres.forEach(genre => {
+            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+        });
     });
 
-    // Set up the scales for the x and y axes
-    const xScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.budget)])
-        .range([0, width]);
+    // Convert to array for D3
+    let genreData = Object.entries(genreCounts).map(([genre, count]) => ({ genre, count }));
 
-    const yScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.worldwide_gross_income)])
-        .range([height, 0]);
+    // Set up SVG
+    const width = 450;
+    const height = 450;
+    const radius = Math.min(width, height) / 2;
 
-    // Add the x and y axes to the SVG canvas
-    const xAxis = d3.axisBottom(xScale);
-    const yAxis = d3.axisLeft(yScale);
+    const svg = d3.select("#pieChart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
-    svg.append('g')
-        .attr('transform', `translate(0, ${height})`)
-        .call(xAxis);
+    // Set up color scale
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
 
-    svg.append('g')
-        .call(yAxis);
+    // Pie generator
+    const pie = d3.pie()
+        .value(d => d.count);
 
-    // Add the data points to the SVG canvas
-    svg.selectAll('circle')
-        .data(data)
+    // Path generator
+    const arc = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+
+    // Label arc (for positioning the labels)
+    const labelArc = d3.arc()
+        .innerRadius(radius - 40)
+        .outerRadius(radius - 40);
+
+    // Create arcs
+    const arcs = svg.selectAll('.arc')
+        .data(pie(genreData))
         .enter()
-        .append('circle')
-        .attr('cx', d => xScale(d.budget))
-        .attr('cy', d => yScale(d.worldwide_gross_income))
-        .attr('r', 5)
-        .attr('fill', 'steelblue');
+        .append('g')
+        .attr('class', 'arc');
+
+    // Draw paths (slices) and labels
+    arcs.each(function(d) {
+        const arcGroup = d3.select(this);
+        arcGroup.append('path')
+            .attr('d', arc)
+            .attr('fill', () => color(d.data.genre));
+
+        arcGroup.append('text')
+            .attr("transform", () => `translate(${labelArc.centroid(d)})`)
+            .attr("dy", ".35em")
+            .text(() => `${d.data.genre}: ${d.data.count}`)
+            .style("text-anchor", "middle")
+            .style("font-size", "12px")
+            .style("fill", "#ffffff");
+    });
+
+
+    // Add click event listener for filtering movies by genre
+    arcs.on('click', (event, d) => {
+        filterTopMoviesByGenre(d.data.genre);
+    });
+
+    // Function to filter top movies by genre
+    function filterTopMoviesByGenre(genre) {
+        // Assuming you have a function to update the chart with filtered data
+        filterMoviesByGenre(genre); // Call the function from vis1.js
+    }
+
+
+    // Placeholder function - Replace with actual implementation
+    function updateTopMoviesChart(filteredData) {
+        // Implement the logic to update the chart or list with filtered data
+        // This part of the code depends on your application's structure
+        console.log('Top movies for genre:', genre, filteredData);
+    }
 });
