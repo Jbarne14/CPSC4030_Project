@@ -14,8 +14,8 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
     let genreData = Object.entries(genreCounts).map(([genre, count]) => ({ genre, count }));
 
     // Set up SVG
-    const width = 450;
-    const height = 450;
+    const width = 300;
+    const height = 300;
     const radius = Math.min(width, height) / 2;
 
     const svg = d3.select("#pieChart")
@@ -77,11 +77,4 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         filterMoviesByGenre(genre); // Call the function from vis1.js
     }
 
-
-    // Placeholder function - Replace with actual implementation
-    function updateTopMoviesChart(filteredData) {
-        // Implement the logic to update the chart or list with filtered data
-        // This part of the code depends on your application's structure
-        console.log('Top movies for genre:', genre, filteredData);
-    }
 });

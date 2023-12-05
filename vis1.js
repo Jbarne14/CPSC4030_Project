@@ -19,8 +19,8 @@ function updateBarChart(data) {
     d3.select("#barChart").html("");
 
     // Set up SVG canvas dimensions for the bar chart
-    const width = 960;
-    const height = 400;
+    const width = 500;
+    const height = 200;
     const margin = { top: 20, right: 30, bottom: 120, left: 90 };
 
     // Append the svg object to the barChart div
