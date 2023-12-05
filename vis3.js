@@ -1,4 +1,4 @@
-// Vis3.js - Genre Distribution Pie Chart with Labels
+// Vis3.js - Genre Distribution Pie Chart with Interactive Tooltips
 
 // Load the necessary data
 d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
@@ -10,11 +10,19 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         });
     });
 
+    // Filter out genres with counts less than or equal to 300
+    let filteredGenreCounts = {};
+    for (const genre in genreCounts) {
+        if (genreCounts[genre] > 300) {
+            filteredGenreCounts[genre] = genreCounts[genre];
+        }
+    }
+
     // Convert to array for D3
-    let genreData = Object.entries(genreCounts).map(([genre, count]) => ({ genre, count }));
+    let genreData = Object.entries(filteredGenreCounts).map(([genre, count]) => ({ genre, count }));
 
     // Set up SVG
-    const width = 300;
+    const width = 300; 
     const height = 300;
     const radius = Math.min(width, height) / 2;
 
@@ -37,11 +45,6 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         .innerRadius(0)
         .outerRadius(radius);
 
-    // Label arc (for positioning the labels)
-    const labelArc = d3.arc()
-        .innerRadius(radius - 40)
-        .outerRadius(radius - 40);
-
     // Create arcs
     const arcs = svg.selectAll('.arc')
         .data(pie(genreData))
@@ -49,22 +52,35 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
         .append('g')
         .attr('class', 'arc');
 
-    // Draw paths (slices) and labels
-    arcs.each(function(d) {
-        const arcGroup = d3.select(this);
-        arcGroup.append('path')
-            .attr('d', arc)
-            .attr('fill', () => color(d.data.genre));
+    // Tooltip for the pie chart
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("text-align", "center")
+        .style("background", "#fff")
+        .style("border", "1px solid #ddd")
+        .style("border-radius", "5px")
+        .style("padding", "10px")
+        .style("pointer-events", "none");
 
-        arcGroup.append('text')
-            .attr("transform", () => `translate(${labelArc.centroid(d)})`)
-            .attr("dy", ".35em")
-            .text(() => `${d.data.genre}: ${d.data.count}`)
-            .style("text-anchor", "middle")
-            .style("font-size", "12px")
-            .style("fill", "#ffffff");
-    });
-
+    // Draw paths (slices)
+    arcs.append('path')
+        .attr('d', arc)
+        .attr('fill', d => color(d.data.genre))
+        .on('mouseover', (event, d) => {
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", .9);
+            tooltip.html(`${d.data.genre}: ${d.data.count}`)
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on('mouseout', (event, d) => {
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
 
     // Add click event listener for filtering movies by genre
     arcs.on('click', (event, d) => {
@@ -73,7 +89,6 @@ d3.csv("IMDB Movies 2000 - 2020.csv").then(data => {
 
     // Function to filter top movies by genre
     function filterTopMoviesByGenre(genre) {
-        // Assuming you have a function to update the chart with filtered data
         filterMoviesByGenre(genre); // Call the function from vis1.js
     }
 
